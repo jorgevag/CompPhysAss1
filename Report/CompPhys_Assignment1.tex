@@ -1,0 +1,239 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc} % Norwegian letters
+\usepackage{amsmath}
+\usepackage{float}  % Used for minipage and stuff.
+\usepackage{wrapfig} % Wrap text around figure wrapfig [tab]
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{enumerate} % Use e.g. \begin{enumerate}[a)]
+\usepackage[font={small, it}]{caption} % captions on figures and tables
+\usepackage[toc,page]{appendix} % Page make Appendices title, toc fix table of content 
+\usepackage{todonotes} % Notes. Use \todo{"text"}. Comment out \listoftodos
+\usepackage{microtype} % Improves spacing. Include AFTER fonts
+\usepackage{hyperref} % Use \autoref{} and \nameref{}
+\hypersetup{backref,
+  colorlinks=true,
+  breaklinks=true,
+  %hidelinks, %uncomment to make links black
+  linkcolor=blue,
+  urlcolor=blue
+}
+\usepackage[all]{hypcap} % Makes hyperref jup to top of pictures and tables
+%
+%-------------------------------------------------------------------------------
+% Page layout
+%\usepackage{showframe} % Uncomment if you want the margin frames
+%\usepackage{fullpage}
+\topmargin=-0.25in
+%\evensidemargin=-0.3in
+%\oddsidemargin=-0.3in
+%\textwidth=6.9in
+%\textheight=9.5in
+\headsep=0.25in
+\footskip=0.50in
+
+%-------------------------------------------------------------------------------
+% Header and footer
+\usepackage{lastpage} % To be able to add last page in footer.
+\usepackage{fancyhdr} % Custom headers and footers
+%\pagestyle{fancy} % Use "fancyplain" for header in all pages
+%\renewcommand{\chaptermark}[1]{ \markboth{#1}{} } % Usefull for book?
+\renewcommand{\sectionmark}[1]{ \markright{\thesection\ #1}{} } % Remove formating and nr.
+%\fancyhead[LE, RO]{\footnotesize\leftmark}
+%\fancyhead[RO, LE]{\footnotesize\rightmark}
+%\lhead[]{\AuthorName}
+%\rhead[]{\rightmark}
+%\fancyfoot[L]{} % Empty left footer
+%\fancyfoot[C]{} % Empty center footer
+%\fancyfoot[R]{Page\ \thepage\ of\ \protect\pageref*{LastPage}} % Page numbering for right footer
+%\renewcommand{\headrulewidth}{1pt} % header underlines
+%\renewcommand{\footrulewidth}{1pt} % footer underlines
+%\setlength{\headheight}{13.6pt} % Customize the height of the header
+
+%-------------------------------------------------------------------------------
+% Suppose to make it easier for LaTeX to place figures and tables where I want.
+%\setlength{\abovecaptionskip}{0pt plus 1pt minus 2pt} % Makes caption come closer to figure.
+%\setcounter{totalnumber}{5}
+%\renewcommand{\textfraction}{0.05}
+%\renewcommand{\topfraction}{0.95}
+%\renewcommand{\bottomfraction}{0.95}
+%\renewcommand{\floatpagefraction}{0.35}
+%
+% Math short cuts for expectation, variance and covariance
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+% Commands for argmin and argmax
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%-----------------------------------------------------------------------------
+%	TITLE SECTION
+%-----------------------------------------------------------------------------
+\newcommand{\AuthorName}{Jørgen Vågan} % Your name
+%
+\newcommand{\horrule}[1]{\rule{\linewidth}{#1}} % Create horizontal rule command with 1 argument of height
+%
+\title{	
+\normalfont \normalsize 
+\textsc{TFY4235 NTNU} \\ [25pt] % Your university, school and/or department name(s)
+\horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
+\huge Computational Physics \\ Assignment I \\ % The assignment title
+\horrule{2pt} \\[0.5cm] % Thick bottom horizontal rule
+}
+%
+\author{\AuthorName } % Your name
+%
+\date{\normalsize\today} % Today's date or a custom date
+\begin{document}
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\listoftodos{}
+%
+\begin{abstract}
+
+\end{abstract}
+%
+\section{Introduction}
+If one wants to separate particles in a solution, there are several techniques one can use to obtain this. 
+Here, considering a constituents of different mass and size, the particles will be separated by the use 
+of a perodic asymmetric potential serving as a set of potential wells.
+By switching the potential on and off with a certain time period, one can bias the particles\' brownian motion
+such that lighter and smaller particles are more likely to cross the potential barriers and jump to the 
+neighboring wells than the larger and heavier ones. This is called to use a rachet potential
+
+\section{Modeling of The Problem}
+\subsection{Theory}
+A small particle placed in a solution will be subject to random collisions with the solvent and
+constituent molecules. The force on the particle due to the collisions varies in both force and
+direction and causes the particle to move in an unregular and unpredictable pattern
+or \textit{Brownian Motion}. 
+In addition to the fluctuating force the particles are also subject to viscous drag, such that the extent of the 
+particles erratic movement is decided by their mass and size/surface. \\
+Now, consider two constituents of spherical particles with radius $r_1$, $r_2$ and masses
+$m_1$, $m_2$, respectively. The 1D equation of motion for particle $i$ is given by Newton's $2^{\text{nd}}$ law
+\begin{align}
+   m_i \frac{d^2x}{dt^2} = \: - \! \underbrace{\frac{\partial}{\partial x} U(x_i,t)}_{\text{potential force}} \:
+                           - \!\!\!\! \underbrace{\gamma _i \frac{dx_i}{dt}}_{\text{friction force}} 
+                            \! \! \! + \:\:\:  \xi (t),
+\end{align}
+where $\gamma_i = 6\pi \eta r_i$ is the friction constant, $U$ is the potential energy and $\xi$ is a stochastic variable modeling the particle's brownian motion. Furthermore, the potential is assumed to have the form of
+\begin{align}
+   U(x,t) = U_r(x) f(t),
+\end{align}
+%
+\begin{align}
+    U_r(x)= 
+\begin{cases}
+    \frac{x}{\alpha L} \Delta U, & \text{if } \: 0 \leq x < \alpha L\\
+   \frac{L-x}{L(1-\alpha)} \Delta U, & \text{if } \alpha L \leq x < L
+\end{cases}
+\!
+,
+\:\:\:
+f(t) =
+\begin{cases}
+    0, & \text{if } \:\:\: 0 \leq t < \frac{3\tau}{4}\\
+   1, & \text{if } \frac{3\tau}{4} \leq t < \tau
+\end{cases}
+\end{align}
+whith $U_r(x)$ being the spatial part, having an asymmetric saw-tooth shape with periodicity L.
+The time dependency is described $f(t)$ which is a square wave signal, turning the potential
+on and off, with a period of $\tau$. $\alpha\in [1,0]$ is the asymmetry factor, giving how much 
+the potential is skewed (with $\alpha = 0.5$ being the symmetric case). \\
+%
+The resulting iterative numerical scheme, based on the equations above, is a forward Euler given by
+\begin{align}
+   x_{n+1} = x_n - \frac{1}{\gamma_i} \frac{\partial}{\partial x} U(x_n,t_n) \delta t
+                  + \sqrt{ \frac{2 k_B T \delta t}{\gamma_i} } \: \hat{\xi} (t).
+\label{euler_scheme}
+\end{align}
+Choosing 
+\begin{align}
+   \hat{x} = \frac{x}{L}, \:\:\:\:\:\:\:
+   \hat{t} = \omega t,    \:\:\:\:\:\:\:
+   \hat{U}(\hat{x},\hat{t})=\frac{U(x,t)}{\Delta U}, \:\:\:\:\:\:\:
+   \omega = \frac{\Delta U}{\gamma_i L^2}, \:\:\:\:\:\:\:
+   \hat{D} = \frac{k_B T}{ \Delta U}
+\end{align}
+such that
+\begin{align*}
+   \frac{\partial}{\partial x} U(x,t)
+   &= \frac{\partial}{\partial x} \big( \Delta U \cdot \hat{U}(\hat{x}, \hat{t}) \big) \\
+   &= \Delta U \cdot \frac{\partial}{\partial x} \big( \hat{U}_r(\hat{x})\big) \hat{f}(\hat{t}) \\
+   &= \Delta U \cdot \frac{\partial \hat{U}_r(\hat{x})}{\partial \hat{x}}  \frac{\partial \hat{x}}{\partial x} \hat{f}(\hat{t}) \\
+   &= \frac{\Delta U}{L} \cdot \frac{\partial}{\partial \hat{x}} \hat{U}_r(\hat{x}, \hat{t})
+\end{align*}
+$\big( \text{note that } f(t) = \hat{f}(\hat{t}) \: \big)$, equation \eqref{euler_scheme} can be rewritten in reduced units
+\begin{align}
+   \hat{x}_{n+1} = \hat{x}_n - \frac{\partial}{\partial \hat{x}} \hat{U}(\hat{x}_n,\hat{t}_n) \delta \hat{t}
+   + \sqrt{ 2 \hat{D} \delta \hat{t} } \: \hat{\xi}.
+\label{reduced_euler_scheme}
+\end{align}
+
+
+\textbf{Box-Müller Algorithm} \\
+A gaussian probability distribution is used to model the particles brownian motion. The stochastic variable
+\todo{can i say the this?} is obtained using the Box-Müller algorithm. Assuming mean $\mu = 0$ and unit
+standard deviation the 2D gaussian distribution can be expressed as
+\begin{align*}
+   p(x) = \frac{1}{2 \pi }e^{-\frac{x^2 + y^2}{2}} = \frac{1}{2 \pi }e^{-\frac{r^2}{2}}
+\end{align*}
+%REFERENCE:
+%http://www.math.nyu.edu/faculty/goodman/teaching/MonteCarlo2005/notes/GaussianSampling.pdf
+using cartesian coordinates. Since the distribution is radially symmetric, it is a good choice
+to use polar coordinates ($r$,$\phi$), with $x = r \cos \theta$, $y = r \sin \theta$ 
+and $\theta \in [0,2\pi]$. Due to the radial symmetry $\theta$ is uniformly distributed on its interval
+and may be sampled using
+\begin{align*}
+   \theta = 2 \pi \xi_2.
+\end{align*}
+The resulting distribution function as a function of $r$
+\begin{align*}
+   P(r' \leq r) = P(r) &= \int_0^{2\pi} \int_0^r \frac{1}{2 \pi }e^{-\frac{r'^2}{2}} r' dr' d\theta \\
+                       &= \int_0^r e^{-\frac{r'^2}{2}} dr' \\
+                       &= 1-e^{-\frac{r^2}{2}},
+\end{align*}
+which we can rewrite to 
+\begin{align*}
+   r = \sqrt{-2ln(1-P(r))} = \sqrt{-2ln(1-\xi')} = \sqrt{-2ln \xi_1}.
+\end{align*}
+By choosing two independent uniformly distributed numbers, 
+$\xi_1$,$\xi_2 \in U(0,1)$, setting $P(r) = \xi_1$ and $\theta = 2 \pi \xi_2 $,
+\begin{align}
+   x &= r \cos \theta = \sqrt{-2ln \xi_1} \cos (2 \pi \xi_2) \\
+   y &= r \sin \theta = \sqrt{-2ln \xi_1} \sin (2 \pi \xi_2).
+\end{align}
+are two uncorrelated gaussian distributed numbers.
+
+
+\textbf{Time Step Size} \\
+$99.99\%$ of the time, the random number drawn from the gaussian distribution follows that $ |\hat{\xi} | < 4$.
+Assuming $0 < \alpha < 1/2$, the shortest length of a constant force region is given by $\alpha L$.
+To get a reasonable answer the iterations must satisfy
+\begin{align}
+   |x_{n+1} -x_n| \ll \alpha L.
+\end{align}
+By inserting the iteration scheme, Eq.\eqref{reduced_euler_scheme}, the expression can be rewritten
+\begin{align*}
+   L| \hat{x}_{n+1} - \hat{x}_n| &\ll \alpha L \\
+    \Big| - \frac{\partial}{\partial \hat{x}} \hat{U}(\hat{x}_n,\hat{t}_n) \delta \hat{t}
+   		+  \sqrt{ 2 \hat{D} \delta \hat{t} } \: \hat{\xi} \: \Big| &\ll \alpha .
+\end{align*}
+In the shortest region the particle experiences the largest force. Assuming that $|\hat{\xi}| < 4$ together with that the force and the kick act in the same direction, the criterion becomes
+\begin{align}
+    \text{max}\Big|\frac{\partial}{\partial \hat{x}} \hat{U}(\hat{x}_n,\hat{t}_n)  \Big| 
+    	\delta \hat{t}
+   			+ 4 \sqrt{ 2 \hat{D} \delta \hat{t} }  \: &\ll \alpha.
+\end{align}
+
+
+
+\subsection{Implementation}
+
+\section{Results}
+\section{Discussion}
+\section{References}
+
+%
+\end{document}
