@@ -3,8 +3,17 @@
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
-
 #include <random> // for generator and uniform distribution, need C++11, so remember flag -std=c++11
+#include <time.h> // clock_t, clock, CLOCKS_PER_SEC
+
+//Trying to parellelize using OpenMP:
+// compile:  mpic++ mpisend.cpp -o runmpisend -std=c++11 -fopenmp
+// run:   mpirun   -np 2 ./runmpisend
+//#pragma om parallel for schedule(static) reduction(+:sum) //HOW DO I REDUCE TO A VECTOR????
+//#pragma om parallel for schedule(static) reduction(+:sum)
+//#include <omp.h>
+//#include <mpi.h>
+
 
 //...................
 // Input Parameters
@@ -29,7 +38,7 @@ const double alpha = 0.2;
 const double ri = 12*pow(10,-9); // m, particle size
 const double eta = pow(10,-3); // Pa*s = kg/m*s
 const double kBT = 26*pow(10,-3); //meV
-const double DeltaU = 10*kBT*1.6*pow(10,-19); // J
+const double DeltaU = 5*kBT*1.6*pow(10,-19); // J
 
 const double gammai = 6*pi*ri*eta;
 const double omega = DeltaU/(L*L*gammai); 
@@ -37,8 +46,9 @@ const double D = (kBT)/( DeltaU/( 1.6*pow(10,-19) ) ); //DeltaU in eV
 
 const double systemSize = 5;
 const size_t n = 2001; //system size/resolution/#-of-lattice-points, must be odd to include 0
-const size_t timeSteps = 2000; // time steps
-const double dt = 0.001;
+const size_t timeSteps = 1000000; // time steps
+//const double dt = 0.001;
+const double dt = 0.0001;
 
 
 //.................
@@ -66,58 +76,64 @@ std::uniform_real_distribution<double> distribution(0.0,1.0);
 //''''''
 int main(int argc, char** argv){
 
+   clock_t tics;
+   tics = clock();
+
    double t = 0;
    double potentialON = 0.75*tau;
    outputForce(potentialON);
 
-   //// Plotting Trajectory
-   //std::ofstream outStream("trajectory.txt");
+   // Plotting Trajectory
+   std::ofstream outStream("Output/trajectory.txt");
+   if (outStream.fail()){
+      std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
+      exit(1);
+   }
+
+   // Making Gaussian Distributed Random numbers
+   std::vector<double> xiArray;
+   xiArray = createGaussianRNGArray(timeSteps);
+
+   // Initial position
+   double x=0;
+
+   // Iterate using Euler scheme
+   outStream << x << " " << t << std::endl; // Output values converted to their physical units
+   for (int m = 1; m < timeSteps+1; ++m){
+      t = double(m)*dt;
+      //x = langevinEuler(x, t, xiArray[m]);
+      x = langevinEuler(x, potentialON, xiArray[m]);
+      outStream << x << " " << t << std::endl; // Output values converted to their physical units
+   }
+   outStream.close();
+
+
+   //// Plotting Final position (distribution) of many particles
+   //std::ofstream outStream("Output/distribution.txt");
    //if (outStream.fail()){
-      //std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
+      //std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
       //exit(1);
    //}
 
-   //// Making Gaussian Distributed Random numbers
+   //// Declaring vector for gaussian distributed random numbers
    //std::vector<double> xiArray;
-   //xiArray = createGaussianRNGArray(timeSteps);
 
-   //// Initial position
-   //double x=0;
-
-   //// Iterate using Euler scheme
-   //outStream << x << " " << t << std::endl; // Output values converted to their physical units
-   //for (int m = 1; m < timeSteps+1; ++m){
-      //t = double(m)*dt;
-      ////x = langevinEuler(x, t, xiArray[m]);
-      //x = langevinEuler(x, potentialON, xiArray[m]);
-      //outStream << x << " " << t << std::endl; // Output values converted to their physical units
+   //size_t numberOfParticles =5000;
+   //double x;
+   //for(int i=0; i<numberOfParticles; ++i){
+      //// Initialize gaussian distributed random kicks for particle i:
+      //xiArray = createGaussianRNGArray(timeSteps);
+      //// Find final position using Euler scheme:
+      //for (int m = 0; m < timeSteps; ++m){
+         //t = double(m)*dt;
+         //x = langevinEuler(x, potentialON, xiArray[m]);
+      //}
+      //outStream << x << std::endl;
    //}
    //outStream.close();
 
 
-   // Plotting Final position (distribution) of many particles
-   std::ofstream outStream("distribution.txt");
-   if (outStream.fail()){
-      std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
-      exit(1);
-   }
-
-   // Declaring vector for gaussian distributed random numbers
-   std::vector<double> xiArray;
-
-   size_t numberOfParticles = 5000;
-   double x;
-   for(int i=0; i<numberOfParticles; ++i){
-      // Initialize gaussian distributed random kicks for particle i:
-      xiArray = createGaussianRNGArray(timeSteps);
-      // Find final position using Euler scheme:
-      for (int m = 0; m < timeSteps; ++m){
-         t = double(m)*dt;
-         x = langevinEuler(x, potentialON, xiArray[m]);
-      }
-      outStream << x << std::endl;
-   }
-   outStream.close();
+   std::cout << "runtime: " << (double)(clock()-tics)/CLOCKS_PER_SEC << " seconds" << std::endl;
    return 0;
 }
 
@@ -132,9 +148,9 @@ double potential(double x, double t){
    else{
       double loc_x = x-floor(x);
       if( loc_x < alpha)
-         return (DeltaU*loc_x)/(alpha);
+         return loc_x/alpha;
       else
-         return ( DeltaU*(1-loc_x) )/( (1.0-alpha) );
+         return (1-loc_x)/(1.0-alpha);
    }
 }
 
@@ -145,9 +161,9 @@ double force(double x, double t){
    else{
       double loc_x = x-floor(x);
       if( loc_x < alpha)
-         return DeltaU/alpha;
+         return 1/alpha;
       else
-         return -DeltaU/(1.0-alpha);
+         return -1/(1.0-alpha);
    }
 }
 //// FOLLOWING FUNCTIONS ARE NOT SCALED:

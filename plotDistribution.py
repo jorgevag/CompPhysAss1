@@ -23,7 +23,7 @@ ax1.set_title("Distribution of Particles")
 ax1.set_xlabel("$Position$")
 ax1.set_ylabel("$Number in bin$")
 #ax1.axis([-0.5,0.5,-10, 10])
-n, bins, patches = ax1.hist(x, 1000, normed=0, facecolor='g', alpha=0.75, label='Distribution of particles')
+n, bins, patches = ax1.hist(x, 500, normed=0, facecolor='g', alpha=0.75, label='Distribution of particles')
 
 leg = ax1.legend()
 plt.show()
