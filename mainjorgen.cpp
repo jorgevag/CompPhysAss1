@@ -8,9 +8,8 @@
 
 //Trying to parellelize using OpenMP:
 // compile:  mpic++ mpisend.cpp -o runmpisend -std=c++11 -fopenmp
-// run:   mpirun   -np 2 ./runmpisend
-//#pragma om parallel for schedule(static) reduction(+:sum) //HOW DO I REDUCE TO A VECTOR????
-//#pragma om parallel for schedule(static) reduction(+:sum)
+// run:   ./runme
+// if this doesn't work try:   ./runme -omp OMP_NUM_THREADS=2
 //#include <omp.h>
 //#include <mpi.h>
 
@@ -34,21 +33,21 @@ const double pi = 4.*atan(1.); // Portable definition of pi
 const double tau = 1;
 const double L = 2*pow(10,-6); // m
 const double alpha = 0.2;
-//const double DeltaU = 80*1.6*pow(10,-19); // J
 const double ri = 12*pow(10,-9); // m, particle size
 const double eta = pow(10,-3); // Pa*s = kg/m*s
 const double kBT = 26*pow(10,-3); //meV
-const double DeltaU = 5*kBT*1.6*pow(10,-19); // J
+const double DeltaU = 0.10*kBT;// eV        //*1.6*pow(10,-19); // J
+//const double DeltaU = 80; // eV         //*1.6*pow(10,-19); // J
 
 const double gammai = 6*pi*ri*eta;
 const double omega = DeltaU/(L*L*gammai); 
-const double D = (kBT)/( DeltaU/( 1.6*pow(10,-19) ) ); //DeltaU in eV
+const double D = (kBT)/( DeltaU/( 1.6*pow(10,-19) ) ); // (DeltaU converted back to eV)
 
 const double systemSize = 5;
-const size_t n = 2001; //system size/resolution/#-of-lattice-points, must be odd to include 0
-const size_t timeSteps = 1000000; // time steps
+const size_t n = 20001; //system size/resolution/#-of-lattice-points, must be odd to include 0
+const size_t timeSteps = 1000; // time steps
 //const double dt = 0.001;
-const double dt = 0.0001;
+const double dt = 0.001;
 
 
 //.................
@@ -76,64 +75,110 @@ std::uniform_real_distribution<double> distribution(0.0,1.0);
 //''''''
 int main(int argc, char** argv){
 
-   clock_t tics;
-   tics = clock();
+   // Start clock, runtime
+   //double tStart, tStop;              // With OMP
+   //tStart = omp_get_wtime();          // With OMP
+   clock_t tics;                       // In General(without OMP)
+   tics = clock();                     // In General(without OMP)
 
    double t = 0;
-   double potentialON = 0.75*tau;
-   outputForce(potentialON);
+   double potentialON = 0.74*tau;
 
-   // Plotting Trajectory
-   std::ofstream outStream("Output/trajectory.txt");
+   outputPotential(potentialON);
+   //// Plotting Trajectory
+   //std::ofstream outStream("Output/trajectory.txt");
+   //if (outStream.fail()){
+      //std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
+      //exit(1);
+   //}
+
+   //// Making Gaussian Distributed Random numbers
+   //std::vector<double> xiArray;
+   //xiArray = createGaussianRNGArray(timeSteps);
+
+   //// Initial position
+   //double x=0;
+
+   //// Iterate using Euler scheme
+   //outStream << x << " " << t << std::endl; // Output values converted to their physical units
+////#pragma omp parallel for schedule (static)
+   //for (int m = 1; m < timeSteps+1; ++m){
+      //t = double(m)*dt;
+      ////x = langevinEuler(x, t, xiArray[m]);
+      //x = langevinEuler(x, potentialON, xiArray[m]);
+      //outStream << x << " " << t << std::endl; // Output values converted to their physical units
+   //}
+   //outStream.close();
+
+
+   // Plotting Final position (distribution) of many particles
+   std::ofstream outStream("Output/distribution.txt");
    if (outStream.fail()){
-      std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
+      std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
       exit(1);
    }
+   size_t numberOfParticles =100000;
+   double x;
 
-   // Making Gaussian Distributed Random numbers
+   // Declaring vector for gaussian distributed random numbers
    std::vector<double> xiArray;
-   xiArray = createGaussianRNGArray(timeSteps);
 
-   // Initial position
-   double x=0;
-
-   // Iterate using Euler scheme
-   outStream << x << " " << t << std::endl; // Output values converted to their physical units
-   for (int m = 1; m < timeSteps+1; ++m){
-      t = double(m)*dt;
-      //x = langevinEuler(x, t, xiArray[m]);
-      x = langevinEuler(x, potentialON, xiArray[m]);
-      outStream << x << " " << t << std::endl; // Output values converted to their physical units
+   for(int i=0; i<numberOfParticles; ++i){
+      // Initialize gaussian distributed random kicks for particle i:
+      xiArray = createGaussianRNGArray(timeSteps);
+      // Find final position using Euler scheme:
+      for (int m = 0; m < timeSteps; ++m){
+         t = double(m)*dt;
+         x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
+      }
+      outStream << x << std::endl;
    }
    outStream.close();
 
 
-   //// Plotting Final position (distribution) of many particles
-   //std::ofstream outStream("Output/distribution.txt");
+   //// Plotting final distribution of potential energy of the particles
+   //std::ofstream outStream("Output/energydistribution.txt");
    //if (outStream.fail()){
       //std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
       //exit(1);
    //}
+   //size_t numberOfParticles =1000;
+   //double x;
 
    //// Declaring vector for gaussian distributed random numbers
    //std::vector<double> xiArray;
 
-   //size_t numberOfParticles =5000;
-   //double x;
+   //// Making Boltzmann distribution for comparison:
+   //std::vector<double> boltz_dist;
+   //boltz_dist.resize(numberOfParticles);
+   //std::vector<double> rangeU;
+   //rangeU.resize(numberOfParticles);
+   //for(int i=0; i<numberOfParticles; ++i){
+      //rangeU[i] = double(i)/( double(numberOfParticles)-1.0 );
+      //boltz_dist[i] = exp(-rangeU[i])/
+                      //( kBT*(exp(DeltaU/kBT)-1) );   //REMEMBER TO CHANGE potentialON to t!!!!!
+   //}
+   
+   
    //for(int i=0; i<numberOfParticles; ++i){
       //// Initialize gaussian distributed random kicks for particle i:
       //xiArray = createGaussianRNGArray(timeSteps);
       //// Find final position using Euler scheme:
       //for (int m = 0; m < timeSteps; ++m){
          //t = double(m)*dt;
-         //x = langevinEuler(x, potentialON, xiArray[m]);
+         //x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
       //}
-      //outStream << x << std::endl;
+      //outStream << potential(x, potentialON) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
+      ////std::cout << potential(x, potentialON) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
+      ////outStream << x << std::endl;
    //}
    //outStream.close();
 
 
-   std::cout << "runtime: " << (double)(clock()-tics)/CLOCKS_PER_SEC << " seconds" << std::endl;
+   // Get final time and Print Runtime
+   std::cout << "runtime: " << (double)(clock()-tics)/CLOCKS_PER_SEC << " seconds" << std::endl; // without OMP
+   //tStop = omp_get_wtime();                                                // With OMP
+   //std::cout << "Runtime: " << tStop-tStart << " seconds" << std::endl;    // With OMP
    return 0;
 }
 
@@ -196,6 +241,7 @@ std::vector<double> createGaussianRNGArray(size_t m){ //takes in number of time 
    double xi_1, xi_2;
    std::vector<double> gaussian_numbers;
    gaussian_numbers.resize(m);
+//#pragma omp parallel for schedule (static)
    for (int i=0; i<m; i+=2){
       xi_1 = distribution(generator);
       xi_2 = distribution(generator);
@@ -280,7 +326,7 @@ void outputGaussianDist(size_t m){
    gaussian_xrange.resize(m);
    double curve_interval = 6;
    for(int i=0; i<m; ++i){
-      gaussian_xrange[i] = i*curve_interval/m-curve_interval/2.0;
+      gaussian_xrange[i] = i*curve_interval/(m-1)-curve_interval/2.0;
       gaussian_curve[i] = 1/sqrt(2*pi)*exp( -(pow(gaussian_xrange[i],2.0))/2.0 );
    }
 

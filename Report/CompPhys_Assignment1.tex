@@ -200,10 +200,13 @@ which we can rewrite to
 \end{align*}
 By choosing two independent uniformly distributed numbers, 
 $\xi_1$,$\xi_2 \in U(0,1)$, setting $P(r) = \xi_1$ and $\theta = 2 \pi \xi_2 $,
+\begin{subequations}
+\label{box_muller}
 \begin{align}
-   x &= r \cos \theta = \sqrt{-2ln \xi_1} \cos (2 \pi \xi_2) \\
-   y &= r \sin \theta = \sqrt{-2ln \xi_1} \sin (2 \pi \xi_2).
-\end{align}
+   x &= r \cos \theta = \sqrt{-2ln \xi_1} \cos (2 \pi \xi_2) \label{box_muller}\\
+   y &= r \sin \theta = \sqrt{-2ln \xi_1} \sin (2 \pi \xi_2). \label{box_muller}
+   \end{align}
+\end{subequations}
 are two uncorrelated gaussian distributed numbers.
 
 

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 f=open('Output/gaussianRandom.txt', 'r')
 lines = f.readlines()
 f.close()
-N=len(lines)-1
+N=len(lines)
 data = np.zeros(N)
 xtheory = np.zeros(N)
 ytheory = np.zeros(N)
