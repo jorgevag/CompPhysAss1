@@ -6,24 +6,18 @@
 #include <random> // for generator and uniform distribution, need C++11, so remember flag -std=c++11
 #include <time.h> // clock_t, clock, CLOCKS_PER_SEC
 
-//Trying to parellelize using OpenMP:
-// compile:  mpic++ mpisend.cpp -o runmpisend -std=c++11 -fopenmp
+// If trying to parellelize using OpenMP:
+// compile:  g++ file.cpp -o runfile -std=c++11 -fopenmp
 // run:   ./runme
 // if this doesn't work try:   ./runme -omp OMP_NUM_THREADS=2
 //#include <omp.h>
-//#include <mpi.h>
-
 
 //...................
 // Input Parameters
 //'''''''''''''''''''
 // Parameter 1: bool, rachet potential ON(true)/OFF(false) 
 // Parameter 2: tau, time period of the flashing rachet potential, [s]
-// Parameter 3: DeltaU, the potential strength/amplitude
-//
-//
-//
-
+// Parameter 3: D (double): diffusion constant D = kBT/DeltaU
 
 //.................
 // Global Constants
@@ -36,12 +30,13 @@ const double alpha = 0.2;
 const double ri = 12*pow(10,-9); // m, particle size
 const double eta = pow(10,-3); // Pa*s = kg/m*s
 const double kBT = 26*pow(10,-3); //meV
-const double DeltaU = 0.10*kBT;// eV        //*1.6*pow(10,-19); // J
+const double DeltaU = 10*kBT;// eV        //*1.6*pow(10,-19); // J
 //const double DeltaU = 80; // eV         //*1.6*pow(10,-19); // J
 
 const double gammai = 6*pi*ri*eta;
 const double omega = DeltaU/(L*L*gammai); 
-const double D = (kBT)/( DeltaU/( 1.6*pow(10,-19) ) ); // (DeltaU converted back to eV)
+//const double D = (kBT)/( DeltaU/( 1.6*pow(10,-19) ) ); // (DeltaU converted back to eV)
+const double D = kBT/DeltaU; // (DeltaU converted back to eV)
 
 const double systemSize = 5;
 const size_t n = 20001; //system size/resolution/#-of-lattice-points, must be odd to include 0
@@ -49,10 +44,9 @@ const size_t timeSteps = 1000; // time steps
 //const double dt = 0.001;
 const double dt = 0.001;
 
-
-//.................
-// Function Headers
-//'''''''''''''''''
+  //................................................//
+ //             Function Implementations           //
+//''''''''''''''''''''''''''''''''''''''''''''''''//'
 double potential(double x, double t); // tau, L, alpha, Delta_U)
 double force(double x, double t);
 std::vector<double> createGaussianRNGArray(size_t m); //takes in number of time steps
@@ -61,6 +55,9 @@ std::vector<double> make1DBox(const size_t n);
 void outputPotential(double t); // For plotting (testing) the potential, uses make1Dbox()
 void outputForce(double t); // For plotting (testing) the force, uses make1Dbox()
 void outputGaussianDist(size_t m); // For plotting (testing) the force, uses make1Dbox()
+void outputTrajectory(double x0);
+void outputParticleDist(size_t numberOfParticles);
+void outputEnergyDist(size_t numberOfParticles);
 void outputTimeCriteria();
 
 // ???????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -70,9 +67,11 @@ void outputTimeCriteria();
 std::default_random_engine generator;
 std::uniform_real_distribution<double> distribution(0.0,1.0);
 
-//......
-// Main
-//''''''
+double potentialON = 0.75*tau;
+
+  //................................................//
+ //                   Main                         //
+//''''''''''''''''''''''''''''''''''''''''''''''''//'
 int main(int argc, char** argv){
 
    // Start clock, runtime
@@ -82,110 +81,31 @@ int main(int argc, char** argv){
    tics = clock();                     // In General(without OMP)
 
    double t = 0;
-   double potentialON = 0.74*tau;
 
-   outputPotential(potentialON);
-   //// Plotting Trajectory
-   //std::ofstream outStream("Output/trajectory.txt");
-   //if (outStream.fail()){
-      //std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
-      //exit(1);
-   //}
+   std::cout << "D=" << D << std::endl;
+   std::cout << "max kick*sqrt(dt) = " << sqrt(2*D*dt)*4 
+             << ", max force*dt = " << force(0.1, potentialON)*dt << std::endl;
 
-   //// Making Gaussian Distributed Random numbers
-   //std::vector<double> xiArray;
-   //xiArray = createGaussianRNGArray(timeSteps);
-
-   //// Initial position
-   //double x=0;
-
-   //// Iterate using Euler scheme
-   //outStream << x << " " << t << std::endl; // Output values converted to their physical units
-////#pragma omp parallel for schedule (static)
-   //for (int m = 1; m < timeSteps+1; ++m){
-      //t = double(m)*dt;
-      ////x = langevinEuler(x, t, xiArray[m]);
-      //x = langevinEuler(x, potentialON, xiArray[m]);
-      //outStream << x << " " << t << std::endl; // Output values converted to their physical units
-   //}
-   //outStream.close();
-
-
-   // Plotting Final position (distribution) of many particles
-   std::ofstream outStream("Output/distribution.txt");
-   if (outStream.fail()){
-      std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
-      exit(1);
-   }
-   size_t numberOfParticles =100000;
-   double x;
-
-   // Declaring vector for gaussian distributed random numbers
-   std::vector<double> xiArray;
-
-   for(int i=0; i<numberOfParticles; ++i){
-      // Initialize gaussian distributed random kicks for particle i:
-      xiArray = createGaussianRNGArray(timeSteps);
-      // Find final position using Euler scheme:
-      for (int m = 0; m < timeSteps; ++m){
-         t = double(m)*dt;
-         x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
-      }
-      outStream << x << std::endl;
-   }
-   outStream.close();
-
-
-   //// Plotting final distribution of potential energy of the particles
-   //std::ofstream outStream("Output/energydistribution.txt");
-   //if (outStream.fail()){
-      //std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
-      //exit(1);
-   //}
-   //size_t numberOfParticles =1000;
-   //double x;
-
-   //// Declaring vector for gaussian distributed random numbers
-   //std::vector<double> xiArray;
-
-   //// Making Boltzmann distribution for comparison:
-   //std::vector<double> boltz_dist;
-   //boltz_dist.resize(numberOfParticles);
-   //std::vector<double> rangeU;
-   //rangeU.resize(numberOfParticles);
-   //for(int i=0; i<numberOfParticles; ++i){
-      //rangeU[i] = double(i)/( double(numberOfParticles)-1.0 );
-      //boltz_dist[i] = exp(-rangeU[i])/
-                      //( kBT*(exp(DeltaU/kBT)-1) );   //REMEMBER TO CHANGE potentialON to t!!!!!
-   //}
-   
-   
-   //for(int i=0; i<numberOfParticles; ++i){
-      //// Initialize gaussian distributed random kicks for particle i:
-      //xiArray = createGaussianRNGArray(timeSteps);
-      //// Find final position using Euler scheme:
-      //for (int m = 0; m < timeSteps; ++m){
-         //t = double(m)*dt;
-         //x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
-      //}
-      //outStream << potential(x, potentialON) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
-      ////std::cout << potential(x, potentialON) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
-      ////outStream << x << std::endl;
-   //}
-   //outStream.close();
+   //outputPotential(potentialON);
+   //outputForce(potentialON);
+   outputTrajectory(1.1);
+   //outputGaussianDist(100);
+   //outputParticleDist(100000);
+   //outputEnergyDist(10000);
 
 
    // Get final time and Print Runtime
    std::cout << "runtime: " << (double)(clock()-tics)/CLOCKS_PER_SEC << " seconds" << std::endl; // without OMP
    //tStop = omp_get_wtime();                                                // With OMP
    //std::cout << "Runtime: " << tStop-tStart << " seconds" << std::endl;    // With OMP
+
    return 0;
 }
 
 
-//.........................
-// Function Implementations
-//'''''''''''''''''''''''''
+  //................................................//
+ //            Function Implementations            //
+//''''''''''''''''''''''''''''''''''''''''''''''''//'
 double potential(double x, double t){
    if(  t - floor(t/tau)*tau < 0.75*tau ){ // OFF is more likely than ON, so this if comes first
       return 0;
@@ -211,31 +131,6 @@ double force(double x, double t){
          return -1/(1.0-alpha);
    }
 }
-//// FOLLOWING FUNCTIONS ARE NOT SCALED:
-//double potential(double x, double t){
-   //if(  t - floor(t/tau)*tau < 0.75*tau ){ // OFF is more likely than ON, so this if comes first
-      //return 0;
-   //}
-   //else{
-      //double loc_x = x-floor(x/L)*L;
-      //if( loc_x < alpha*L)
-         //return (DeltaU*loc_x)/(alpha*L);
-      //else
-         //return ( DeltaU*(L-loc_x) )/( L*(1.0-alpha) );
-   //}
-//}
-//double force(double x, double t){
-   //if(  t - floor(t/tau)*tau < 0.75*tau ){ // OFF is more likely than ON, so this if comes first
-      //return 0;
-   //}
-   //else{
-      //double loc_x = x-floor(x/L)*L;
-      //if( loc_x < alpha*L)
-         //return (DeltaU)/(alpha*L);
-      //else
-         //return -DeltaU/( L*(1.0-alpha) );
-   //}
-//}
 
 std::vector<double> createGaussianRNGArray(size_t m){ //takes in number of time steps m=even
    double xi_1, xi_2;
@@ -336,9 +231,35 @@ void outputGaussianDist(size_t m){
    outStream.close();
 }
 
-// WORK iN PROGRESS! NEED TO OUTPUT THE BOLTZMANN DISTRUBUTION TOGETHER WITH THE OUTPUT DATA:
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-void outputBoltzmannDist(size_t numberOfParticles){
+void outputTrajectory(double x0){
+   // Plotting Trajectory
+   std::ofstream outStream("Output/trajectory.txt");
+   if (outStream.fail()){
+      std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
+      exit(1);
+   }
+
+   // Initial position and time
+   double x=x0;
+   double t=0;
+   // Making Gaussian Distributed Random numbers
+   std::vector<double> xiArray;
+   xiArray = createGaussianRNGArray(timeSteps);
+
+
+   // Iterate using Euler scheme
+   outStream << x << " " << t << std::endl; // Output values converted to their physical units
+//#pragma omp parallel for schedule (static)
+   for (int m = 1; m < timeSteps+1; ++m){
+      t = double(m)*dt;
+      //x = langevinEuler(x, t, xiArray[m]);
+      x = langevinEuler(x, potentialON, xiArray[m]);
+      outStream << x << " " << t << std::endl; // Output values converted to their physical units
+   }
+   outStream.close();
+}
+
+void outputParticleDist(size_t numberOfParticles){
    // Plotting Final position (distribution) of many particles
    std::ofstream outStream("Output/distribution.txt");
    if (outStream.fail()){
@@ -346,21 +267,55 @@ void outputBoltzmannDist(size_t numberOfParticles){
       exit(1);
    }
 
-   // Boltzmann distribution
-
-   // Simulation output
-   std::vector<double> xiArray;
+   // Declaring particle position and vector for gaussian distributed random numbers
    double x;
-   double t;
+   std::vector<double> xiArray;
+
    for(int i=0; i<numberOfParticles; ++i){
-      // Initialize gaussian distributed random kicks for particle i:
+      // Initialize position and gaussian distributed random kicks for particle i:
+      x = 0;
       xiArray = createGaussianRNGArray(timeSteps);
       // Find final position using Euler scheme:
       for (int m = 0; m < timeSteps; ++m){
-         t = double(m)*dt;
-         x = langevinEuler(x, t, xiArray[m]);
+         x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
       }
       outStream << x << std::endl;
+   }
+
+   outStream.close();
+}
+
+void outputEnergyDist(size_t numberOfParticles){
+   // Plotting final distribution of potential energy of the particles
+   std::ofstream outStream("Output/energydistribution.txt");
+   if (outStream.fail()){
+      std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
+      exit(1);
+   }
+
+   // Declaring particle position and vector for gaussian distributed random numbers
+   double x;
+   std::vector<double> xiArray;
+
+   // Making Boltzmann distribution for comparison:
+   std::vector<double> boltz_dist;
+   boltz_dist.resize(numberOfParticles);
+   std::vector<double> rangeU;
+   rangeU.resize(numberOfParticles);
+   for(int i=0; i<numberOfParticles; ++i){
+      rangeU[i] = double(i)/( double(numberOfParticles)-1.0 );
+      boltz_dist[i] = exp( -rangeU[i]/D )/( D*(1-exp(-1.0/D)) );
+   }
+   
+   for(int i=0; i<numberOfParticles; ++i){
+      // Initialize position and gaussian distributed random kicks for particle i:
+      x = 0;
+      xiArray = createGaussianRNGArray(timeSteps);
+      // Find final position using Euler scheme:
+      for (int m = 0; m < timeSteps; ++m){
+         x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
+      }
+      outStream << potential(x, potentialON) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
    }
 
    outStream.close();
