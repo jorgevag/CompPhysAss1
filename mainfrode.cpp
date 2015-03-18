@@ -12,16 +12,16 @@
 // if this doesn't work try:   ./runme -omp OMP_NUM_THREADS=2
 //#include <omp.h>
 
-//...................
-// Input Parameters
-//'''''''''''''''''''
+  //...................................................//
+ //                 Input Parameters                  //
+//'''''''''''''''''''''''''''''''''''''''''''''''''''//'
 // Parameter 1: bool, rachet potential ON(true)/OFF(false) 
 // Parameter 2: tau, time period of the flashing rachet potential, [s]
 // Parameter 3: D (double): diffusion constant D = kBT/DeltaU
 
-//.................
-// Global Constants
-//'''''''''''''''''
+  //.............................................//
+ //            Global Constants                 //
+//'''''''''''''''''''''''''''''''''''''''''''''//
 const double pi = 4.*atan(1.); // Portable definition of pi
 
 const double tau = 1;
@@ -88,10 +88,10 @@ int main(int argc, char** argv){
 
    //outputPotential(potentialON);
    //outputForce(potentialON);
-   outputTrajectory(1.1);
+   //outputTrajectory(1.1);
    //outputGaussianDist(100);
    //outputParticleDist(100000);
-   //outputEnergyDist(10000);
+   outputEnergyDist(10000);
 
 
    // Get final time and Print Runtime
@@ -250,7 +250,7 @@ void outputTrajectory(double x0){
    for (int m = 1; m < timeSteps+1; ++m){
       t = double(m)*dt;
       //x = langevinEuler(x, t, xiArray[m]);
-      x = langevinEuler(x, potentialON, xiArray[m]);
+      langevinEuler(x, potentialON, xiArray[m]);
       outStream << x << " " << t << std::endl; // Output values converted to their physical units
    }
    outStream.close();
@@ -274,7 +274,7 @@ void outputParticleDist(size_t numberOfParticles){
       xiArray = createGaussianRNGArray(timeSteps);
       // Find final position using Euler scheme:
       for (int m = 0; m < timeSteps; ++m){
-         x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
+         langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
       }
       outStream << x << std::endl;
    }
@@ -310,7 +310,7 @@ void outputEnergyDist(size_t numberOfParticles){
       xiArray = createGaussianRNGArray(timeSteps);
       // Find final position using Euler scheme:
       for (int m = 0; m < timeSteps; ++m){
-         x = langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
+         langevinEuler(x, potentialON, xiArray[m]); // REMEMBER TO CHANGE potentialON to t  !!!!!!!!!!
       }
       outStream << potential(x, potentialON) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
    }
