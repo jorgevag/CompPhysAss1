@@ -24,7 +24,7 @@ ax1 = fig.add_subplot(111)
 ax1.set_xlabel("tau")
 ax1.set_ylabel("# of particles/bin")
 #ax1.axis([-0.5,0.5,-10, 10])
-ax1.plot(t,v)
+ax1.plot(t,v,'-o')
 
 #leg = ax1.legend()
 plt.show()

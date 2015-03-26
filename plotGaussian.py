@@ -24,12 +24,11 @@ for i in range(N):
 fig = plt.figure(1)
 
 ax1 = fig.add_subplot(111)
-ax1.set_title("Gaussian Random Number Histogram (Test)$")
-ax1.set_xlabel("$X$")
-ax1.set_ylabel("$Number in bin$")
+ax1.set_xlabel("xi")
+ax1.set_ylabel("P(xi)")
 #ax1.axis([-0.5,0.5,-10, 10])
-ax1.plot(xtheory, ytheory, label = "theory")
-n, bins, patches = ax1.hist(data, 500, normed=1, facecolor='g', alpha=0.75, label='gaussian distribution')
+ax1.plot(xtheory, ytheory, label = "Normal Distribution")
+n, bins, patches = ax1.hist(data, 500, normed=1, facecolor='g', alpha=0.75, label='Random Generated Numbers')
 
 leg = ax1.legend()
 plt.show()

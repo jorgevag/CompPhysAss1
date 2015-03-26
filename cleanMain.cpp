@@ -11,6 +11,7 @@
 // run:   ./runme
 // if this doesn't work try:   ./runme -omp OMP_NUM_THREADS=2
 //#include <omp.h>
+//#pragma omp parallel for schedule(static) num_threads(2)
 
   //...................................................//
  //                 Input Parameters                  //
@@ -29,14 +30,12 @@ const double alpha = 0.2;
 const double ri = 12*pow(10,-9); // m, particle size
 const double eta = pow(10,-3); // Pa*s = kg/m*s
 const double kBT = 26*pow(10,-3); //26 meV
-const double DeltaU = 10*kBT;// eV        //*1.6*pow(10,-19); // J
-//const double DeltaU = 80; // eV         //*1.6*pow(10,-19); // J
+const double DeltaU = 80; // eV         //*1.6*pow(10,-19); // J
 
 const double gammai = 6*pi*ri*eta;
 const double omega = ( DeltaU*1.6*pow(10,-19) )/(L*L*gammai); 
-//const double D = (kBT)/( DeltaU/( 1.6*pow(10,-19) ) ); // (DeltaU converted back to eV)
-double D = kBT/DeltaU; // (DeltaU converted back to eV)
-double tau = 1;
+
+double D = kBT/DeltaU;
 bool flashON = true;
 
 const double systemSize = 5;
@@ -47,35 +46,28 @@ const double dt = 0.01;
 double timeSteps;
 
   //................................................//
- //             Function Implementations           //
+ //             Function Declarations              //
 //''''''''''''''''''''''''''''''''''''''''''''''''//'
 double potential(const double x, const double t, const double tau);
 double force(const double x, const double t, const double tau);
 std::vector<double> createGaussianRNGArray(size_t m); //takes in number of time steps m
 void langevinEuler(double& x, const double t, const double tau, const double xi);
-
 void fillGaussianRNGArray(std::vector<double>& timeStepSizedVector);
-void runSimulationForParticleDistribution
-      (std::vector<double> & particleDistribution, const size_t timeSteps, const double tau);
-
+void runSimulationForParticleDistribution(std::vector<double> & particleDistribution, 
+                                             const size_t timeSteps, const double tau);
 std::vector<double> make1DBox(const size_t n);
-void outputPotential(const double tau); // For plotting (testing) the potential, uses make1Dbox()
-void outputForce(const double tau); // For plotting (testing) the force, uses make1Dbox()
+void outputPotentialAndForce(const double tau); // For plotting (testing) the potential, uses make1Dbox()
+void outputFlash(const double tau);
 void outputGaussianDist(size_t m); // For plotting (testing) the force, uses make1Dbox()
+void outputDistributions(size_t numberOfParticles, const double tau);
 void outputTrajectory(double x0, const double tau);
-void outputParticleDist(size_t numberOfParticles, const double tau);
-void outputEnergyDist(size_t numberOfParticles, const double tau);
 void outputDriftVelocity(size_t numberOfParticles, const size_t tau_steps, const double tau_max);
-void outputTimeCriteria();
 
-// ???????????????????????????????????????????????????????????????????????????????????????????????????????
-// CAN I AVOID HAVING THESE GLOBALLY DEFINED TO ALLOW IT TO GAIN ACCESS TO MY gaussianRNG()-FUNCTION??????
-// ???????????????????????????????????????????????????????????????????????????????????????????????????????
+
+
 // Activate RNG and create uniform distribution U(0,1):
 std::default_random_engine generator;
 std::uniform_real_distribution<double> distribution(0.0,1.0);
-
-double potentialON = 0.75*tau;
 
   //................................................//
  //                   Main                         //
@@ -83,23 +75,20 @@ double potentialON = 0.75*tau;
 int main(int argc, char** argv){
 
    if (argc < 3) {
-      std::cout << " Need " << 3 << " imput parameters!" << std::endl
-                << std::endl
-                << "Parameter 1: bool, rachet potential flashing ON(true)/OFF(false)" << std::endl 
-                << "Parameter 2: tau, time period of the flashing rachet potential, [s]" << std::endl
-                << "Parameter 3: D (double): diffusion constant D = kBT/DeltaU" << std::endl
-                << "  (if U=80eV and kBT = 26 meV, then D = 0.000325 )" << std::endl;
+      std::cout << "The program needs " << 3 << " imput parameters:" << std::endl
+                << "  Parameter 1: bool, rachet potential flashing ON(true)/OFF(false)" << std::endl 
+                << "  Parameter 2: tau, time period of the flashing rachet potential, [s]" << std::endl
+                << "  Parameter 3: D (double): diffusion constant D = kBT/DeltaU" << std::endl
+                << "   (if U=80eV and kBT = 26 meV, then D = 0.000325 )" << std::endl;
       return -1;
    }
    flashON = atoi(argv[1]);
-   tau = atof(argv[2]);
+   double tau = atof(argv[2]);
    D = atof(argv[3]);
 
+   timeSteps = size_t( 10*alpha*alpha/(2*D*dt) );
+   //timeSteps = size_t(10*alpha*alpha/(2*D*dt)*0.1) + 1;
 
-   timeSteps = 10*alpha*alpha/(2*D*dt);
-   //const bool flashON = true;
-   //const double tau = 1;
-   //const double D = kBT/DeltaU;
    std::cout << "flashON=" << flashON << std::endl
              << "tau=" << tau << std::endl
              << "D=" << D << std::endl
@@ -112,13 +101,17 @@ int main(int argc, char** argv){
    tics = clock();                     // In General(without OMP)
 
 
-   //outputPotential(tau);
-   //outputForce(tau);
-   //outputTrajectory(0.5, tau);
-   //outputGaussianDist(1000);
-   //outputParticleDist(10000, tau);
-   //outputEnergyDist(100000, tau);
-   
+   //std::cout << "Starting outputPotentialAndForce()..." << std::endl;
+   //outputPotentialAndForce(tau);
+   //std::cout << "Starting outputFlash()..." << std::endl;
+   //outputFlash(tau);
+   //std::cout << "Starting outputTrajectory()..." << std::endl;
+   //outputTrajectory(0.0, tau);
+   //std::cout << "Starting outputGaussianDist()..." << std::endl;
+   //outputGaussianDist(10000);
+   //std::cout << "Starting outputDistributions()..." << std::endl;
+   //outputDistributions(10000, tau);
+   //std::cout << "Starting outputDriftVelocity()..." << std::endl;
    //outputDriftVelocity(1000, 100, 15);
 
 
@@ -129,7 +122,7 @@ int main(int argc, char** argv){
       exit(1);
    }
 
-   size_t numberOfParticles = 100;
+   size_t numberOfParticles = 10000;
 
    // Declaring particle position and vector for gaussian distributed random numbers
    double x;
@@ -143,11 +136,13 @@ int main(int argc, char** argv){
    particleDistribution.resize(numberOfParticles);
 
 
-   double tau = 0;
-   size_t tau_steps = 10;
-   double tau_max = alpha*alpha/(2*D);
+   size_t tau_steps = 50;
+   double tau_min = 0.5*alpha*alpha/(2*D);
+   tau = tau_min;
+   double tau_max = 2*alpha*alpha/(2*D);
    std::cout << "omega=" << omega << std::endl;
    std::cout << "tau_steps=" << tau_steps << std::endl;
+   std::cout << "tau_min=" << tau_min << std::endl;
    std::cout << "tau_max=" << tau_max << std::endl;
    for(int k=0; k<tau_steps; ++k){
       // Run simulation to obtain the final particle distribution:
@@ -159,7 +154,7 @@ int main(int argc, char** argv){
       }
       velocityAvg = velocitySum/numberOfParticles;
       outStream << tau << " " << velocityAvg << std::endl;
-      tau += tau_max/double(tau_steps);
+      tau += (tau_max-tau_min)/double(tau_steps);
    }
    outStream.close();
 
@@ -204,26 +199,15 @@ double force(const double x, const double t, const double tau){
    }
 }
 
-std::vector<double> createGaussianRNGArray(size_t m){ //takes in number of time steps m=even
-   double xi_1, xi_2;
-   std::vector<double> gaussian_numbers;
-   gaussian_numbers.resize(m);
-//#pragma omp parallel for schedule (static)
-   for (int i=0; i<m; i+=2){
-      xi_1 = distribution(generator);
-      xi_2 = distribution(generator);
-      gaussian_numbers[ i ] = sqrt( -2*log(xi_1) )*cos(2*pi*xi_2);
-      gaussian_numbers[i+1] = sqrt( -2*log(xi_1) )*sin(2*pi*xi_2);
-   }
-   return gaussian_numbers;
-}
-
-inline 
-void langevinEuler(double& x, const double t, const double tau, const double xi) {
+inline void langevinEuler(double& x, const double t, const double tau, const double xi) {
    x = x - force(x,t,tau)*dt + sqrt(2*D*dt)*xi;
 }
 
 void fillGaussianRNGArray(std::vector<double>& timeStepSizedVector){ //takes in number of time steps m=even
+   if (timeStepSizedVector.size()%2 != 0){
+      std::cout << "ERROR! fillGaussianRNGAarray() needs an array of even number dimention!" << std::endl;
+      exit(1);
+   }
    double xi_1, xi_2;
    for (int i=0; i<timeStepSizedVector.size(); i+=2){
       xi_1 = distribution(generator);
@@ -233,10 +217,8 @@ void fillGaussianRNGArray(std::vector<double>& timeStepSizedVector){ //takes in 
    }
 }
 
-inline
-void runSimulationForParticleDistribution
-         (std::vector<double> & particleDistribution, const size_t timeSteps, const double tau) {
-
+void runSimulationForParticleDistribution(std::vector<double> & particleDistribution,
+                                                    const size_t timeSteps, const double tau) {
    // Declaring particle position and vector for gaussian distributed random numbers
    double x;
    double t;
@@ -258,6 +240,20 @@ void runSimulationForParticleDistribution
    }
 }
 
+void outputFlash(const double tau){
+   std::ofstream outStream("Output/flash.txt");
+   if (outStream.fail()){
+      std::cout << "Outputfile 'flash.txt' opening failed. \n ";
+      exit(1);
+   }
+      double t;
+      for (int m=0; m<timeSteps; m++){
+         t = dt*double(m);
+         outStream << t << " " << potential(alpha, t, tau) << std::endl;
+      }
+   outStream.close();
+}
+
 // This function is mainly for the Plotting Functions below
 std::vector<double> make1DBox(const size_t n){
    if(n%2 == 0){
@@ -275,7 +271,7 @@ std::vector<double> make1DBox(const size_t n){
 }
 
 // Uses make1Dbox()
-void outputPotential(const double tau){
+void outputPotentialAndForce(const double tau){
    // Output to plotPotential.py
    std::vector<double> box;
    box = make1DBox(n);
@@ -285,40 +281,26 @@ void outputPotential(const double tau){
       std::cout << "Outputfile 'potential.txt' opening failed. \n ";
       exit(1);
    }
-   for(int i=0; i<box.size(); ++i){
-      outStream << box[i] << " " << potential(box[i], 0.75*tau, tau) << std::endl;
-   }
+      for(int i=0; i<box.size(); ++i)
+         outStream << box[i] << " " << potential(box[i], 0.75*tau, tau) << std::endl;
    outStream.close();
-}
 
-// Uses make1Dbox()
-void outputForce(const double tau){
-   // Output to plotForce.py
-   std::vector<double> box;
-   box = make1DBox(n);
-
-   std::ofstream outStream("Output/force.txt");
+   outStream.open("Output/force.txt");
    if (outStream.fail()){
       std::cout << "Outputfile 'force.txt' opening failed. \n ";
       exit(1);
    }
-   for(int i=0; i<box.size(); ++i){
-      outStream << box[i] << " " << force(box[i],0.75*tau, tau) << std::endl;
-   }
+      for(int i=0; i<box.size(); ++i)
+         outStream << box[i] << " " << force(box[i],0.75*tau, tau) << std::endl;
    outStream.close();
 }
 
 // Uses createGaussianRNGARRAY()
 void outputGaussianDist(size_t m){
-   std::ofstream outStream("Output/gaussianRandom.txt");
-   if (outStream.fail()){
-      std::cout << "Outputfile 'gaussianRandom.txt' opening failed. \n ";
-      exit(1);
-   }
    // Creating gaussian random numbers
    std::vector<double> gaussian_numbers;
    gaussian_numbers.resize(m);
-   gaussian_numbers = createGaussianRNGArray(m);
+   fillGaussianRNGArray(gaussian_numbers);
 
    // Creating gaussian plot for comparison
    std::vector<double> gaussian_curve;
@@ -331,110 +313,86 @@ void outputGaussianDist(size_t m){
       gaussian_curve[i] = 1/sqrt(2*pi)*exp( -(pow(gaussian_xrange[i],2.0))/2.0 );
    }
 
-   for(int i=0; i<gaussian_numbers.size(); ++i){
-      outStream << gaussian_numbers[i] << " " << gaussian_xrange[i] << " " << gaussian_curve[i] << std::endl;
+   // Output the gaussian distributed numbers together with the theoretical gaussian curve:
+   std::ofstream outStream("Output/gaussianRandom.txt");
+   if (outStream.fail()){
+      std::cout << "Outputfile 'gaussianRandom.txt' opening failed. \n ";
+      exit(1);
+   }
+      for(int i=0; i<gaussian_numbers.size(); ++i){
+         outStream << gaussian_numbers[i] << " " << gaussian_xrange[i] << " " << gaussian_curve[i] << std::endl;
    }
    outStream.close();
 }
 
 void outputTrajectory(double x0, const double tau){
-   // Plotting Trajectory
+   // Initial position and time
+   double x=x0;
+   double t=0;
+
+   // Making Gaussian Distributed Random numbers:
+   std::vector<double> xiArray;
+   xiArray.resize(timeSteps);
+   fillGaussianRNGArray(xiArray);
+
    std::ofstream outStream("Output/trajectory.txt");
    if (outStream.fail()){
       std::cout << "Outputfile 'trajectory.txt' opening failed. \n ";
       exit(1);
    }
-
-   // Initial position and time
-   double x=x0;
-   double t=0;
-   // Making Gaussian Distributed Random numbers
-   std::vector<double> xiArray;
-   xiArray.resize(timeSteps);
-   xiArray = createGaussianRNGArray(timeSteps);
-
-
-   // Iterate using Euler scheme
-   outStream << x << " " << t << std::endl; // Output values converted to their physical units
-//#pragma omp parallel for schedule (static)
-   for (int m = 1; m < timeSteps+1; ++m){
-      t = double(m)*dt;
-      //x = langevinEuler(x, t, xiArray[m]);
-      langevinEuler(x, t, tau, xiArray[m]);
+      // Iterate using Euler scheme
       outStream << x << " " << t << std::endl; // Output values converted to their physical units
-   }
+      for (int m = 1; m < timeSteps+1; ++m){
+         t = double(m)*dt;
+         langevinEuler(x, t, tau, xiArray[m]);
+         outStream << x << " " << t << std::endl; // Output values converted to their physical units
+      }
    outStream.close();
 }
 
-void outputParticleDist(size_t numberOfParticles, const double tau){
-   // Plotting Final position (distribution) of many particles
+void outputDistributions(size_t numberOfParticles, const double tau){
+   /* Declaring vector for random numbers: */
+   std::vector<double> xiArray;
+   xiArray.resize(timeSteps);
+
+   /* Declaring vector for distribution: */
+   std::vector<double> distribution;
+   distribution.resize(numberOfParticles);
+
+   /* Run simulation and get final distribution: */
+   runSimulationForParticleDistribution(distribution, timeSteps, tau);
+
+   /* Output Distribution: */
    std::ofstream outStream("Output/distribution.txt");
    if (outStream.fail()){
       std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
       exit(1);
    }
-
-   // Declaring particle position and vector for gaussian distributed random numbers
-   double x;
-   double t;
-   std::vector<double> xiArray;
-   xiArray.resize(timeSteps);
-
-   for(int i=0; i<numberOfParticles; ++i){
-      // Initialize position and gaussian distributed random kicks for particle i:
-      x = 0;
-      t = 0;
-      xiArray = createGaussianRNGArray(timeSteps);
-      // Find final position using Euler scheme:
-      for (int m = 0; m < timeSteps; ++m){
-         t = double(m)*dt;
-         langevinEuler(x, t, tau, xiArray[m]);
-      }
-      outStream << x << std::endl;
-   }
-
+      for (int i = 0; i<distribution.size(); ++i)
+         outStream << distribution[i] << std::endl;
    outStream.close();
-}
 
-void outputEnergyDist(size_t numberOfParticles, const double tau){
-   // Plotting final distribution of potential energy of the particles
-   std::ofstream outStream("Output/energydistribution.txt");
+   /* Output Energy Distribution: */
+   outStream.open("Output/energydistribution.txt");
    if (outStream.fail()){
-      std::cout << "Outputfile 'distribution.txt' opening failed. \n ";
+      std::cout << "Outputfile 'energydistribution.txt' opening failed. \n ";
       exit(1);
    }
-
-   // Declaring particle position and vector for gaussian distributed random numbers
-   double x;
-   double t;
-   std::vector<double> xiArray;
-   xiArray.resize(timeSteps);
-
-   // Making Boltzmann distribution for comparison:
-   std::vector<double> boltz_dist;
-   boltz_dist.resize(numberOfParticles);
-   std::vector<double> rangeU;
-   rangeU.resize(numberOfParticles);
-   for(int i=0; i<numberOfParticles; ++i){
-      rangeU[i] = double(i)/( double(numberOfParticles)-1.0 );
-      boltz_dist[i] = exp( -rangeU[i]/D )/( D*(1-exp(-1.0/D)) );
-   }
-   
-   for(int i=0; i<numberOfParticles; ++i){
-      // Initialize position and gaussian distributed random kicks for particle i:
-      x = 0;
-      xiArray = createGaussianRNGArray(timeSteps);
-      // Find final position using Euler scheme:
-      for (int m = 0; m < timeSteps; ++m){
-         t = double(m)*dt;
-         langevinEuler(x, t, tau, xiArray[m]);
+      // Making Boltzmann distribution for comparison:
+      std::vector<double> boltz_dist;
+      boltz_dist.resize(numberOfParticles);
+      std::vector<double> rangeU;
+      rangeU.resize(numberOfParticles);
+      for(int i=0; i<numberOfParticles; ++i){
+         rangeU[i] = double(i)/( double(numberOfParticles)-1.0 );
+         boltz_dist[i] = exp( -rangeU[i]/D )/( D*(1-exp(-1.0/D)) );
       }
-      outStream << potential(x, 0.75*tau, tau) << " " << rangeU[i] << " " << boltz_dist[i] << std::endl;
-   }
-
+      // Output data:
+      for (int i = 0; i<distribution.size(); ++i)
+         outStream << potential(distribution[i], 0.75*tau, tau) << " " 
+                   << rangeU[i] << " " << boltz_dist[i] << std::endl;
    outStream.close();
 }
-
 
 void outputDriftVelocity(size_t numberOfParticles, const size_t tau_steps, const double tau_max=15.0) {
    // Plotting Final position (distribution) of many particles
@@ -466,7 +424,7 @@ void outputDriftVelocity(size_t numberOfParticles, const size_t tau_steps, const
       for(int i=0; i<numberOfParticles; ++i){
          // Initialize position and gaussian distributed random kicks for particle i:
          x = 0;
-         xiArray = createGaussianRNGArray(timeSteps);
+         fillGaussianRNGArray(xiArray);
          // Find final position using Euler scheme:
          for (int m = 0; m < timeSteps; ++m){
             t = double(m)*dt;
@@ -480,21 +438,3 @@ void outputDriftVelocity(size_t numberOfParticles, const size_t tau_steps, const
    }
    outStream.close();
 }
-
-//void outputTimeCriteria(){
-   //std::ofstream outStream("Output/timecriteria.txt");
-   //if (outStream.fail()){
-      //std::cout << "Outputfile 'timecriteria.txt' opening failed. \n ";
-      //exit(1);
-   //}
-   //size_t iterations=1000;
-   //double idt;
-   //double LHS;
-   //for(int i = 0; i < iterations; ++i){
-      ////idt = i*(alpha/(iterations-1));
-      //idt = (double)i*0.0015/(double)(iterations-1);
-      //LHS = idt/(alpha*alpha) + (4*sqrt(2*D*idt))/alpha;
-      //outStream << idt << " " << LHS << std::endl;
-   //}
-   //outStream.close();
-//}
